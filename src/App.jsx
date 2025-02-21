@@ -1,12 +1,8 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
 import './App.css'
 import { useAuth } from './context/AuthContext';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashBoard';
-import Test from "./pages/Test"
 
 function App() {
   const { user, loading } = useAuth();
@@ -31,10 +27,6 @@ function App() {
       <Route
         path="/dashboard"
         element={user ? <DashboardPage /> : <Navigate to="/login" />}
-      />
-      <Route
-        path="/test"
-        element={<Test></Test>}
       />
     </Routes>
   );
