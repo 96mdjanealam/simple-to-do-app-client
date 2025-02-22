@@ -6,6 +6,7 @@ import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 function DashboardPage() {
   const { user, logout, login } = useAuth();
   const [tasks, setTasks] = useState([]);
+  const [isActivityLog, setIsActivityLog] = useState(false);
   const [isSwitchingUser, setIsSwitchingUser] = useState(false);
   const [newTask, setNewTask] = useState({
     title: "",
@@ -13,6 +14,7 @@ function DashboardPage() {
     category: "To-Do",
   });
   const [editingTaskId, setEditingTaskId] = useState(null); // Track the task being edited
+  const [activityLog, setActivityLog] = useState([]); // Activity log state
 
   // Fetch tasks when the user changes
   useEffect(() => {
@@ -29,6 +31,12 @@ function DashboardPage() {
         });
     }
   }, [user]);
+
+  // Function to add a log entry
+  const addLogEntry = (message) => {
+    const timestamp = new Date().toLocaleString();
+    setActivityLog((prevLog) => [...prevLog, `${timestamp}: ${message}`]);
+  };
 
   // Handle switching users
   const handleSwitchUser = async () => {
@@ -47,7 +55,7 @@ function DashboardPage() {
     e.preventDefault();
 
     if (!newTask.title || newTask.title.length > 50) {
-      alert("Title is required and must be <= 50 characters");
+      alert("Title is required and must be less than 50 characters.");
       return;
     }
 
@@ -57,6 +65,11 @@ function DashboardPage() {
 
       setTasks([...tasks, createdTask]);
       setNewTask({ title: "", description: "", category: "To-Do" });
+
+      // Log the addition of a new task
+      addLogEntry(
+        `Task "${createdTask.title}" added to "${createdTask.category}".`
+      );
     } catch (error) {
       console.error("Error adding task:", error);
     }
@@ -74,6 +87,9 @@ function DashboardPage() {
 
       setTasks(updatedTasks);
       setEditingTaskId(null); // Exit edit mode
+
+      // Log the update of a task
+      addLogEntry(`Task "${updatedData.title}" updated.`);
     } catch (error) {
       console.error("Error updating task:", error);
     }
@@ -83,10 +99,15 @@ function DashboardPage() {
   const handleDeleteTask = async (taskId) => {
     try {
       const token = user.accessToken;
+      const taskToDelete = tasks.find((task) => task._id === taskId);
+
       await deleteTask(token, taskId);
 
       const updatedTasks = tasks.filter((task) => task._id !== taskId);
       setTasks(updatedTasks);
+
+      // Log the deletion of a task
+      addLogEntry(`Task "${taskToDelete.title}" deleted.`);
     } catch (error) {
       console.error("Error deleting task:", error);
     }
@@ -96,119 +117,191 @@ function DashboardPage() {
   const onDragEnd = (result) => {
     const { source, destination } = result;
 
-    if (!destination || (source.droppableId === destination.droppableId && source.index === destination.index)) {
+    if (
+      !destination ||
+      (source.droppableId === destination.droppableId &&
+        source.index === destination.index)
+    ) {
       return;
     }
 
+    let updatedTasks;
+
     if (source.droppableId === destination.droppableId) {
-      const columnTasks = tasks.filter((task) => task.category === source.droppableId);
+      const columnTasks = tasks.filter(
+        (task) => task.category === source.droppableId
+      );
       const [movedTask] = columnTasks.splice(source.index, 1);
       columnTasks.splice(destination.index, 0, movedTask);
 
-      const updatedTasks = tasks.map((task) =>
-        task.category === source.droppableId ? columnTasks.find((t) => t._id === task._id) : task
+      updatedTasks = tasks.map((task) =>
+        task.category === source.droppableId
+          ? columnTasks.find((t) => t._id === task._id)
+          : task
       );
 
-      setTasks(updatedTasks);
-
       try {
-        updateTask(user.accessToken, movedTask._id, { order: destination.index });
+        updateTask(user.accessToken, movedTask._id, {
+          order: destination.index,
+        });
       } catch (error) {
         console.error("Error updating task order:", error);
       }
     } else {
-      const sourceColumnTasks = tasks.filter((task) => task.category === source.droppableId);
-      const destinationColumnTasks = tasks.filter((task) => task.category === destination.droppableId);
+      const sourceColumnTasks = tasks.filter(
+        (task) => task.category === source.droppableId
+      );
+      const destinationColumnTasks = tasks.filter(
+        (task) => task.category === destination.droppableId
+      );
       const [movedTask] = sourceColumnTasks.splice(source.index, 1);
-      destinationColumnTasks.splice(destination.index, 0, { ...movedTask, category: destination.droppableId });
+      destinationColumnTasks.splice(destination.index, 0, {
+        ...movedTask,
+        category: destination.droppableId,
+      });
 
-      const updatedTasks = [
-        ...tasks.filter((task) => task.category !== source.droppableId && task.category !== destination.droppableId),
+      updatedTasks = [
+        ...tasks.filter(
+          (task) =>
+            task.category !== source.droppableId &&
+            task.category !== destination.droppableId
+        ),
         ...sourceColumnTasks,
         ...destinationColumnTasks,
       ];
-
-      setTasks(updatedTasks);
 
       try {
         updateTask(user.accessToken, movedTask._id, {
           order: destination.index,
           category: destination.droppableId,
         });
+
+        // Log the movement of a task
+        addLogEntry(
+          `Task "${movedTask.title}" moved from "${source.droppableId}" to "${destination.droppableId}".`
+        );
       } catch (error) {
         console.error("Error updating task category and order:", error);
       }
     }
+
+    setTasks(updatedTasks);
   };
 
   return (
-    <div className="p-4">
-      <header className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">Todo App</h1>
-        <div className="flex gap-2">
+    <div className="p-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold mb-4">Todo App</h1>
+        <div className="flex gap-2 mb-4">
           <button
             onClick={handleSwitchUser}
-            disabled={isSwitchingUser}
-            className={`bg-blue-500 text-white px-4 py-2 rounded ${
-              isSwitchingUser ? "opacity-50 cursor-not-allowed" : ""
-            }`}
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg"
           >
             {isSwitchingUser ? "Switching..." : "Switch User"}
           </button>
-          <button onClick={logout} className="bg-red-500 text-white px-4 py-2 rounded">
+          <button
+            onClick={logout}
+            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg"
+          >
             Logout
           </button>
         </div>
-      </header>
+      </div>
 
       {/* Add Task Form */}
-      <form onSubmit={handleAddTask} className="mb-4">
-        <input
-          type="text"
-          placeholder="Title"
-          value={newTask.title}
-          onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-          className="border p-2 mr-2 w-64"
-        />
-        <input
-          type="text"
-          placeholder="Description"
-          value={newTask.description}
-          onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-          className="border p-2 mr-2 w-64"
-        />
-        <select
-          value={newTask.category}
-          onChange={(e) => setNewTask({ ...newTask, category: e.target.value })}
-          className="border p-2 mr-2"
-        >
-          <option value="To-Do">To-Do</option>
-          <option value="In Progress">In Progress</option>
-          <option value="Done">Done</option>
-        </select>
-        <button type="submit" className="bg-green-500 text-white px-4 py-2 rounded">
-          Add Task
-        </button>
+      <form onSubmit={handleAddTask} className="mb-6 w-full md:w-1/2 mx-auto">
+        <div className="flex flex-col gap-2 items-center">
+          <div className="flex gap-2 w-full">
+            <input
+              type="text"
+              value={newTask.title}
+              onChange={(e) =>
+                setNewTask({ ...newTask, title: e.target.value })
+              }
+              placeholder="Title"
+              className="border-2 border-blue-200 rounded-xl w-1/2 p-2"
+            />
+            <input
+              type="text"
+              value={newTask.description}
+              onChange={(e) =>
+                setNewTask({ ...newTask, description: e.target.value })
+              }
+              placeholder="Description"
+              className="border-2 border-blue-200 rounded-xl w-1/2 p-2"
+            />
+          </div>
+          <div className="flex gap-2">
+            <select
+              value={newTask.category}
+              onChange={(e) =>
+                setNewTask({ ...newTask, category: e.target.value })
+              }
+              className="border-2 border-blue-200 rounded-xl p-2"
+            >
+              <option>To-Do</option>
+              <option>In Progress</option>
+              <option>Done</option>
+            </select>
+            <button
+              type="submit"
+              className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl"
+            >
+              Add Task
+            </button>
+          </div>
+        </div>
       </form>
+      {/* Activity Log */}
+      <button
+        className="px-4 font-semibold py-2 bg-yellow-400 rounded-xl mb-4"
+        onClick={() => {
+          setIsActivityLog((prev) => !prev);
+        }}
+      >
+        {`${isActivityLog ? "Close" : "Open"} Activity Log`}
+      </button>
+
+      {isActivityLog && (
+        <div className="w-full mb-4 p-4 rounded-lg bg-gray-100">
+          <h2 className="text-lg font-bold mb-2">Activity Log</h2>
+          <ul className="space-y-2">
+            {activityLog.map((log, index) => (
+              <li key={index} className="text-sm text-gray-700">
+                {log}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Render Tasks */}
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="flex flex-col md:flex-row gap-4">
           {/* To-Do Column */}
           <Droppable droppableId="To-Do">
             {(provided) => (
-              <div ref={provided.innerRef} {...provided.droppableProps} className="bg-gray-100 p-4 rounded-lg">
+              <div
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+                className="w-full p-4 rounded-lg bg-gray-100"
+              >
                 <h2 className="text-lg font-bold mb-2">To-Do</h2>
                 {tasks
                   .filter((task) => task.category === "To-Do")
                   .map((task, index) => (
-                    <Draggable key={task._id} draggableId={task._id} index={index}>
+                    <Draggable
+                      key={task._id}
+                      draggableId={task._id}
+                      index={index}
+                    >
                       {(provided) => (
                         <div
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           {...provided.dragHandleProps}
-                          className="bg-white p-4 mb-2 rounded-lg shadow-md"
+                          className="mb-2 p-2 border-2 border-gray-200 rounded-lg bg-white"
                         >
                           {editingTaskId === task._id ? (
                             <form
@@ -222,52 +315,56 @@ function DashboardPage() {
                               }}
                             >
                               <input
-                                type="text"
                                 name="title"
                                 defaultValue={task.title}
-                                className="border p-2 mr-2 w-64"
+                                className="border-2 border-gray-200 rounded-xl p-2 mr-2"
                               />
                               <input
-                                type="text"
                                 name="description"
                                 defaultValue={task.description}
-                                className="border p-2 mr-2 w-64"
+                                className="border-2 border-gray-200 rounded-xl p-2 mr-2"
                               />
-                              <select name="category" defaultValue={task.category} className="border p-2 mr-2">
-                                <option value="To-Do">To-Do</option>
-                                <option value="In Progress">In Progress</option>
-                                <option value="Done">Done</option>
+                              <select
+                                name="category"
+                                defaultValue={task.category}
+                                className="border-2 border-gray-200 rounded-xl p-2 mr-2"
+                              >
+                                <option>To-Do</option>
+                                <option>In Progress</option>
+                                <option>Done</option>
                               </select>
-                              <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">
+                              <button
+                                type="submit"
+                                className="bg-green-500 hover:bg-green-600 text-white mt-2 cursor-pointer px-2 py-1 rounded-lg"
+                              >
                                 Save
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setEditingTaskId(null)}
-                                className="bg-gray-500 text-white px-4 py-2 rounded ml-2"
+                                className="bg-gray-500 hover:bg-gray-600 text-white mt-2 px-2 py-1 rounded-lg cursor-pointer ml-2"
                               >
                                 Cancel
                               </button>
                             </form>
                           ) : (
                             <div className="flex justify-between items-center">
-                              {/* Left Side: Task Details */}
                               <div>
-                                <h3 className="font-bold">{task.title}</h3>
-                                <p className="text-sm text-gray-600">{task.description}</p>
+                                <div>{task.title}</div>
+                                <div className="text-sm text-gray-600">
+                                  {task.description}
+                                </div>
                               </div>
-
-                              {/* Right Side: Buttons */}
-                              <div className="flex gap-2">
+                              <div className="flex space-x-2">
                                 <button
                                   onClick={() => setEditingTaskId(task._id)}
-                                  className="bg-yellow-500 text-white px-2 py-1 rounded"
+                                  className="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded-lg"
                                 >
                                   Edit
                                 </button>
                                 <button
                                   onClick={() => handleDeleteTask(task._id)}
-                                  className="bg-red-500 text-white px-2 py-1 rounded"
+                                  className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded-lg"
                                 >
                                   Delete
                                 </button>
@@ -286,18 +383,26 @@ function DashboardPage() {
           {/* In Progress Column */}
           <Droppable droppableId="In Progress">
             {(provided) => (
-              <div ref={provided.innerRef} {...provided.droppableProps} className="bg-gray-100 p-4 rounded-lg">
+              <div
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+                className="w-full p-4 rounded-lg bg-gray-100"
+              >
                 <h2 className="text-lg font-bold mb-2">In Progress</h2>
                 {tasks
                   .filter((task) => task.category === "In Progress")
                   .map((task, index) => (
-                    <Draggable key={task._id} draggableId={task._id} index={index}>
+                    <Draggable
+                      key={task._id}
+                      draggableId={task._id}
+                      index={index}
+                    >
                       {(provided) => (
                         <div
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           {...provided.dragHandleProps}
-                          className="bg-white p-4 mb-2 rounded-lg shadow-md"
+                          className="mb-2 p-2 border-2 border-gray-200 rounded-lg bg-white"
                         >
                           {editingTaskId === task._id ? (
                             <form
@@ -311,52 +416,56 @@ function DashboardPage() {
                               }}
                             >
                               <input
-                                type="text"
                                 name="title"
                                 defaultValue={task.title}
-                                className="border p-2 mr-2 w-64"
+                                className="border-2 border-gray-200 rounded-xl p-2 mr-2"
                               />
                               <input
-                                type="text"
                                 name="description"
                                 defaultValue={task.description}
-                                className="border p-2 mr-2 w-64"
+                                className="border-2 border-gray-200 rounded-xl p-2 mr-2"
                               />
-                              <select name="category" defaultValue={task.category} className="border p-2 mr-2">
-                                <option value="To-Do">To-Do</option>
-                                <option value="In Progress">In Progress</option>
-                                <option value="Done">Done</option>
+                              <select
+                                name="category"
+                                defaultValue={task.category}
+                                className="border-2 border-gray-200 rounded-xl p-2 mr-2"
+                              >
+                                <option>To-Do</option>
+                                <option>In Progress</option>
+                                <option>Done</option>
                               </select>
-                              <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">
+                              <button
+                                type="submit"
+                                className="bg-green-500 hover:bg-green-600 text-white mt-2 cursor-pointer px-2 py-1 rounded-lg"
+                              >
                                 Save
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setEditingTaskId(null)}
-                                className="bg-gray-500 text-white px-4 py-2 rounded ml-2"
+                                className="bg-gray-500 hover:bg-gray-600 text-white mt-2 px-2 py-1 rounded-lg cursor-pointer ml-2"
                               >
                                 Cancel
                               </button>
                             </form>
                           ) : (
                             <div className="flex justify-between items-center">
-                              {/* Left Side: Task Details */}
                               <div>
-                                <h3 className="font-bold">{task.title}</h3>
-                                <p className="text-sm text-gray-600">{task.description}</p>
+                                <div>{task.title}</div>
+                                <div className="text-sm text-gray-600">
+                                  {task.description}
+                                </div>
                               </div>
-
-                              {/* Right Side: Buttons */}
-                              <div className="flex gap-2">
+                              <div className="flex space-x-2">
                                 <button
                                   onClick={() => setEditingTaskId(task._id)}
-                                  className="bg-yellow-500 text-white px-2 py-1 rounded"
+                                  className="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded-lg"
                                 >
                                   Edit
                                 </button>
                                 <button
                                   onClick={() => handleDeleteTask(task._id)}
-                                  className="bg-red-500 text-white px-2 py-1 rounded"
+                                  className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded-lg"
                                 >
                                   Delete
                                 </button>
@@ -375,18 +484,26 @@ function DashboardPage() {
           {/* Done Column */}
           <Droppable droppableId="Done">
             {(provided) => (
-              <div ref={provided.innerRef} {...provided.droppableProps} className="bg-gray-100 p-4 rounded-lg">
+              <div
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+                className="w-full p-4 rounded-lg bg-gray-100"
+              >
                 <h2 className="text-lg font-bold mb-2">Done</h2>
                 {tasks
                   .filter((task) => task.category === "Done")
                   .map((task, index) => (
-                    <Draggable key={task._id} draggableId={task._id} index={index}>
+                    <Draggable
+                      key={task._id}
+                      draggableId={task._id}
+                      index={index}
+                    >
                       {(provided) => (
                         <div
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           {...provided.dragHandleProps}
-                          className="bg-white p-4 mb-2 rounded-lg shadow-md"
+                          className="mb-2 p-2 border-2 border-gray-200 rounded-lg bg-white"
                         >
                           {editingTaskId === task._id ? (
                             <form
@@ -400,52 +517,56 @@ function DashboardPage() {
                               }}
                             >
                               <input
-                                type="text"
                                 name="title"
                                 defaultValue={task.title}
-                                className="border p-2 mr-2 w-64"
+                                className="border-2 border-gray-200 rounded-xl p-2 mr-2"
                               />
                               <input
-                                type="text"
                                 name="description"
                                 defaultValue={task.description}
-                                className="border p-2 mr-2 w-64"
+                                className="border-2 border-gray-200 rounded-xl p-2 mr-2"
                               />
-                              <select name="category" defaultValue={task.category} className="border p-2 mr-2">
-                                <option value="To-Do">To-Do</option>
-                                <option value="In Progress">In Progress</option>
-                                <option value="Done">Done</option>
+                              <select
+                                name="category"
+                                defaultValue={task.category}
+                                className="border-2 border-gray-200 rounded-xl p-2 mr-2"
+                              >
+                                <option>To-Do</option>
+                                <option>In Progress</option>
+                                <option>Done</option>
                               </select>
-                              <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">
+                              <button
+                                type="submit"
+                                className="bg-green-500 hover:bg-green-600 text-white mt-2 cursor-pointer px-2 py-1 rounded-lg"
+                              >
                                 Save
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setEditingTaskId(null)}
-                                className="bg-gray-500 text-white px-4 py-2 rounded ml-2"
+                                className="bg-gray-500 hover:bg-gray-600 text-white mt-2 px-2 py-1 rounded-lg cursor-pointer ml-2"
                               >
                                 Cancel
                               </button>
                             </form>
                           ) : (
                             <div className="flex justify-between items-center">
-                              {/* Left Side: Task Details */}
                               <div>
-                                <h3 className="font-bold">{task.title}</h3>
-                                <p className="text-sm text-gray-600">{task.description}</p>
+                                <div>{task.title}</div>
+                                <div className="text-sm text-gray-600">
+                                  {task.description}
+                                </div>
                               </div>
-
-                              {/* Right Side: Buttons */}
-                              <div className="flex gap-2">
+                              <div className="flex space-x-2">
                                 <button
                                   onClick={() => setEditingTaskId(task._id)}
-                                  className="bg-yellow-500 text-white px-2 py-1 rounded"
+                                  className="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded-lg"
                                 >
                                   Edit
                                 </button>
                                 <button
                                   onClick={() => handleDeleteTask(task._id)}
-                                  className="bg-red-500 text-white px-2 py-1 rounded"
+                                  className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded-lg"
                                 >
                                   Delete
                                 </button>
