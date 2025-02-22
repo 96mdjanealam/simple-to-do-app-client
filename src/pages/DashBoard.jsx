@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { addTask, fetchTasks, updateTask, deleteTask } from "../services/api";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import logo from "../assets/icons8-task-96.png"
 
 function DashboardPage() {
   const { user, logout, login } = useAuth();
@@ -229,9 +230,13 @@ function DashboardPage() {
   return (
     <div className="p-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold mb-4">Todo App</h1>
-        <div className="flex gap-2 mb-4">
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center justify-center gap-4">
+        <img src={logo} className="w-10" alt="" />
+        <h1 className="text-2xl font-bold">Todo App</h1>
+        </div>
+        
+        <div className="flex gap-2">
           <button
             onClick={handleSwitchUser}
             className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg"
@@ -352,25 +357,28 @@ function DashboardPage() {
                                 });
                               }}
                             >
-                              <input
-                                name="title"
-                                defaultValue={task.title}
-                                className="border-2 border-gray-200 rounded-xl p-2 mr-2"
-                              />
-                              <input
-                                name="description"
-                                defaultValue={task.description}
-                                className="border-2 border-gray-200 rounded-xl p-2 mr-2"
-                              />
-                              <select
-                                name="category"
-                                defaultValue={task.category}
-                                className="border-2 border-gray-200 rounded-xl p-2 mr-2"
-                              >
-                                <option>To-Do</option>
-                                <option>In Progress</option>
-                                <option>Done</option>
-                              </select>
+                              <div className="flex flex-wrap gap-2">
+                                <input
+                                  name="title"
+                                  defaultValue={task.title}
+                                  className="border-2 border-gray-200 rounded-xl p-2 mr-2"
+                                />
+                                <input
+                                  name="description"
+                                  defaultValue={task.description}
+                                  className="border-2 border-gray-200 rounded-xl p-2 mr-2"
+                                />
+                                <select
+                                  name="category"
+                                  defaultValue={task.category}
+                                  className="border-2 border-gray-200 rounded-xl p-2 mr-2"
+                                >
+                                  <option>To-Do</option>
+                                  <option>In Progress</option>
+                                  <option>Done</option>
+                                </select>
+                              </div>
+
                               <button
                                 type="submit"
                                 className="bg-green-500 hover:bg-green-600 text-white mt-2 cursor-pointer px-2 py-1 rounded-lg"
@@ -453,25 +461,27 @@ function DashboardPage() {
                                 });
                               }}
                             >
-                              <input
-                                name="title"
-                                defaultValue={task.title}
-                                className="border-2 border-gray-200 rounded-xl p-2 mr-2"
-                              />
-                              <input
-                                name="description"
-                                defaultValue={task.description}
-                                className="border-2 border-gray-200 rounded-xl p-2 mr-2"
-                              />
-                              <select
-                                name="category"
-                                defaultValue={task.category}
-                                className="border-2 border-gray-200 rounded-xl p-2 mr-2"
-                              >
-                                <option>To-Do</option>
-                                <option>In Progress</option>
-                                <option>Done</option>
-                              </select>
+                              <div className="flex flex-wrap gap-2">
+                                <input
+                                  name="title"
+                                  defaultValue={task.title}
+                                  className="border-2 border-gray-200 rounded-xl p-2 mr-2"
+                                />
+                                <input
+                                  name="description"
+                                  defaultValue={task.description}
+                                  className="border-2 border-gray-200 rounded-xl p-2 mr-2"
+                                />
+                                <select
+                                  name="category"
+                                  defaultValue={task.category}
+                                  className="border-2 border-gray-200 rounded-xl p-2 mr-2"
+                                >
+                                  <option>To-Do</option>
+                                  <option>In Progress</option>
+                                  <option>Done</option>
+                                </select>
+                              </div>
                               <button
                                 type="submit"
                                 className="bg-green-500 hover:bg-green-600 text-white mt-2 cursor-pointer px-2 py-1 rounded-lg"
@@ -554,25 +564,27 @@ function DashboardPage() {
                                 });
                               }}
                             >
-                              <input
-                                name="title"
-                                defaultValue={task.title}
-                                className="border-2 border-gray-200 rounded-xl p-2 mr-2"
-                              />
-                              <input
-                                name="description"
-                                defaultValue={task.description}
-                                className="border-2 border-gray-200 rounded-xl p-2 mr-2"
-                              />
-                              <select
-                                name="category"
-                                defaultValue={task.category}
-                                className="border-2 border-gray-200 rounded-xl p-2 mr-2"
-                              >
-                                <option>To-Do</option>
-                                <option>In Progress</option>
-                                <option>Done</option>
-                              </select>
+                              <div className="flex flex-wrap gap-2">
+                                <input
+                                  name="title"
+                                  defaultValue={task.title}
+                                  className="border-2 border-gray-200 rounded-xl p-2 mr-2"
+                                />
+                                <input
+                                  name="description"
+                                  defaultValue={task.description}
+                                  className="border-2 border-gray-200 rounded-xl p-2 mr-2"
+                                />
+                                <select
+                                  name="category"
+                                  defaultValue={task.category}
+                                  className="border-2 border-gray-200 rounded-xl p-2 mr-2"
+                                >
+                                  <option>To-Do</option>
+                                  <option>In Progress</option>
+                                  <option>Done</option>
+                                </select>
+                              </div>
                               <button
                                 type="submit"
                                 className="bg-green-500 hover:bg-green-600 text-white mt-2 cursor-pointer px-2 py-1 rounded-lg"
