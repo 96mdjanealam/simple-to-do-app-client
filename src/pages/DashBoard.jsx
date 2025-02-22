@@ -114,9 +114,10 @@ function DashboardPage() {
   };
 
   // Handle drag-and-drop events
-  const onDragEnd = (result) => {
+  const onDragEnd = async (result) => {
     const { source, destination } = result;
 
+    // If there's no destination or the task hasn't moved, do nothing
     if (
       !destination ||
       (source.droppableId === destination.droppableId &&
@@ -125,39 +126,50 @@ function DashboardPage() {
       return;
     }
 
+    // Optimistically update the frontend state
     let updatedTasks;
 
     if (source.droppableId === destination.droppableId) {
+      // Task moved within the same column
       const columnTasks = tasks.filter(
         (task) => task.category === source.droppableId
       );
       const [movedTask] = columnTasks.splice(source.index, 1);
       columnTasks.splice(destination.index, 0, movedTask);
 
-      updatedTasks = tasks.map((task) =>
-        task.category === source.droppableId
-          ? columnTasks.find((t) => t._id === task._id)
-          : task
-      );
+      // Recalculate order for all tasks in the column
+      columnTasks.forEach((task, index) => {
+        task.order = index;
+      });
 
-      try {
-        updateTask(user.accessToken, movedTask._id, {
-          order: destination.index,
-        });
-      } catch (error) {
-        console.error("Error updating task order:", error);
-      }
+      updatedTasks = [
+        ...tasks.filter((task) => task.category !== source.droppableId),
+        ...columnTasks,
+      ];
+      addLogEntry(
+        `Task "${movedTask.title}" reordered in "${source.droppableId}".`
+      );
     } else {
+      // Task moved to a different column
       const sourceColumnTasks = tasks.filter(
         (task) => task.category === source.droppableId
       );
       const destinationColumnTasks = tasks.filter(
         (task) => task.category === destination.droppableId
       );
+
       const [movedTask] = sourceColumnTasks.splice(source.index, 1);
       destinationColumnTasks.splice(destination.index, 0, {
         ...movedTask,
         category: destination.droppableId,
+      });
+
+      // Recalculate order for tasks in both columns
+      sourceColumnTasks.forEach((task, index) => {
+        task.order = index;
+      });
+      destinationColumnTasks.forEach((task, index) => {
+        task.order = index;
       });
 
       updatedTasks = [
@@ -170,22 +182,48 @@ function DashboardPage() {
         ...destinationColumnTasks,
       ];
 
-      try {
-        updateTask(user.accessToken, movedTask._id, {
-          order: destination.index,
-          category: destination.droppableId,
-        });
-
-        // Log the movement of a task
-        addLogEntry(
-          `Task "${movedTask.title}" moved from "${source.droppableId}" to "${destination.droppableId}".`
-        );
-      } catch (error) {
-        console.error("Error updating task category and order:", error);
-      }
+      addLogEntry(
+        `Task "${movedTask.title}" moved from "${source.droppableId}" to "${destination.droppableId}".`
+      );
     }
 
+    // Update the frontend state optimistically
     setTasks(updatedTasks);
+
+    try {
+      // Update the backend
+      if (source.droppableId === destination.droppableId) {
+        await Promise.all(
+          updatedTasks
+            .filter((task) => task.category === source.droppableId)
+            .map((task) =>
+              updateTask(user.accessToken, task._id, { order: task.order })
+            )
+        );
+      } else {
+        await Promise.all([
+          ...updatedTasks
+            .filter((task) => task.category === source.droppableId)
+            .map((task) =>
+              updateTask(user.accessToken, task._id, { order: task.order })
+            ),
+          ...updatedTasks
+            .filter((task) => task.category === destination.droppableId)
+            .map((task) =>
+              updateTask(user.accessToken, task._id, {
+                order: task.order,
+                category: task.category,
+              })
+            ),
+        ]);
+      }
+    } catch (error) {
+      console.error("Error updating task order/category:", error);
+
+      // Revert the frontend state if the backend update fails
+      setTasks((prevTasks) => [...prevTasks]);
+      alert("Failed to update task. Please try again.");
+    }
   };
 
   return (
