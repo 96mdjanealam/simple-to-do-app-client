@@ -1,17 +1,18 @@
-import './App.css'
-import { useAuth } from './context/AuthContext';
-import { Navigate, Route, Routes } from 'react-router-dom';
-import LoginPage from './pages/LoginPage';
-import DashboardPage from './pages/DashBoard';
+import "./App.css";
+import { useAuth } from "./context/AuthContext";
+import { Navigate, Route, Routes } from "react-router-dom";
+import LoginPage from "./pages/LoginPage";
+import DashboardPage from "./pages/DashBoard";
 
 function App() {
   const { user, loading } = useAuth();
 
-  console.log(user);
- 
-
   if (loading) {
-    return <div className="flex justify-center items-center h-screen">Loading...</div>;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        Loading...
+      </div>
+    );
   }
 
   return (
@@ -32,4 +33,4 @@ function App() {
   );
 }
 
-export default App
+export default App;

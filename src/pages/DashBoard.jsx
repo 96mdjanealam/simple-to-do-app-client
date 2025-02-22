@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { addTask, fetchTasks, updateTask, deleteTask } from "../services/api";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
-import logo from "../assets/icons8-task-96.png"
+import logo from "../assets/icons8-task-96.png";
 
 function DashboardPage() {
   const { user, logout, login } = useAuth();
@@ -48,6 +48,7 @@ function DashboardPage() {
       console.error("Error during login:", err);
     } finally {
       setIsSwitchingUser(false);
+      setActivityLog([]);
     }
   };
 
@@ -232,10 +233,10 @@ function DashboardPage() {
       {/* Header */}
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center justify-center gap-4">
-        <img src={logo} className="w-10" alt="" />
-        <h1 className="text-2xl font-bold">Todo App</h1>
+          <img src={logo} className="w-10" alt="" />
+          <h1 className="text-2xl font-bold">Todo App</h1>
         </div>
-        
+
         <div className="flex gap-2">
           <button
             onClick={handleSwitchUser}
@@ -400,6 +401,9 @@ function DashboardPage() {
                                 <div className="text-sm text-gray-600">
                                   {task.description}
                                 </div>
+                                <p className="bg-yellow-300 w-fit mt-0.5 text-xs px-1.5 py-0.5 rounded-full">
+                                  {task.category}
+                                </p>
                               </div>
                               <div className="flex space-x-2">
                                 <button
@@ -503,6 +507,9 @@ function DashboardPage() {
                                 <div className="text-sm text-gray-600">
                                   {task.description}
                                 </div>
+                                <p className="bg-blue-300 w-fit mt-0.5 text-xs px-1.5 py-0.5 rounded-full">
+                                  {task.category}
+                                </p>
                               </div>
                               <div className="flex space-x-2">
                                 <button
@@ -606,6 +613,9 @@ function DashboardPage() {
                                 <div className="text-sm text-gray-600">
                                   {task.description}
                                 </div>
+                                <p className="bg-green-300 w-fit mt-0.5 text-xs px-1.5 py-0.5 rounded-full">
+                                  {task.category}
+                                </p>
                               </div>
                               <div className="flex space-x-2">
                                 <button
